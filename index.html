@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <div class="info">
+        SOMES
+    </div>
+    <div class="controls">
+        <button class="add-random" onclick="toggleTimer()">Toggle timer</button>
+        <button class="add-random" onclick="pushRandom()">Add random</button>
+        <button class="reset plus" onclick="resetParams()">Reset params</button>
+    </div>
+    <svg class="pulse" expanded="true" height="110px" width="110px">
+        <circle class="innerCircle" cx="50%" cy="50%" r="22.7901%" fill="#32ac48" stroke="#32acff" stroke-width="5%">
+          <animate attributeType="SVG" attributeName="r" begin="0s" dur="1s" repeatCount="indefinite" from="5%" to="25%"></animate>
+          <animate attributeType="CSS" attributeName="stroke-width" begin="0s" dur="1s" repeatCount="indefinite" from="3%" to="0%"></animate>
+          <animate attributeType="CSS" attributeName="opacity" begin="0s" dur="1s" repeatCount="indefinite" from="1" to="0"></animate>
+        </circle>
+    </svg>
+</body>
+<style>
+    .info{
+        font-size: 16px;
+        color: #fff;
+    }
+    body{
+        font-family: sans-serif;
+        margin: 0;
+        padding: 0;
+        background: #343b4c;
+    }
+    .pulse{
+        z-index: 0;
+        position: absolute;
+        top: 0;
+        pointer-events: none;
+        left: 0;
+    }
+    .controls{
+        padding-top: 24px;
+    }
+    .plus, .add-random{
+        min-width: 80px;
+        padding: 6px 12px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #fff;
+        background-color: #32ac48;
+        border-radius: 3px;
+        border: none;
+    }
+    .minus{
+        width: 80px;
+        padding: 6px 12px;
+        font-size: 14px;
+        font-weight: bold;
+        color: #fff;
+        background-color: #db4931;
+        border-radius: 3px;
+        border: none;
+    }
+    canvas{
+        /* padding: 24px; */
+        display: block;
+        box-sizing: border-box;
+        padding: 0;
+        /* border: 1px solid #999; */
+    }
+</style>
+<script src="./index.js"></script>
+</html>
