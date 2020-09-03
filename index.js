@@ -16,6 +16,7 @@ let CLICKED_POS = {x:0,y:0}
 let DOM_OFFSET = {top: 0, left: 0}
 let SIDE_OFFSET = 160
 
+let AVG_PRICE = 0
 let MIN_PRICE = 0
 let MAX_PRICE = 0
 let LAST_PRICE = 0
@@ -168,6 +169,18 @@ const drawCurrentPriceLine = () => {
     ctx.lineTo(W, yPos  )
     ctx.stroke()
 }
+const drawAvgPriceLine = () => {
+    if(!dataArray.length) { return }
+    ctx.lineWidth = 1
+    const yPos = getYPosition({bid: AVG_PRICE})
+    
+    ctx.strokeStyle = 'red'
+    ctx.setLineDash([4,6])
+    ctx.beginPath()
+    ctx.moveTo(0, yPos  )
+    ctx.lineTo(W, yPos  )
+    ctx.stroke()
+}
 const drawSavedCoordinates = () => {
     savedCoordinates.forEach(c => {
         ctx.setLineDash([0,0])
@@ -230,7 +243,7 @@ const setCursorPrice = () => {
 
     const CUR = cursor.y // revers here ( H- )
     
-    const cp = ((MAX_PRICE - MIN_PRICE) * CUR / H) + MIN_PRICE
+    const cp = ((MAX_PRICE - MIN_PRICE) * CUR / H ) + MIN_PRICE
     
 
 
@@ -319,6 +332,7 @@ const render = () => {
     
     drawBackground()
     drawCurrentPriceLine()
+    drawAvgPriceLine()
     drawSavedCoordinates()
     drawGrid()
     drawHighLowLines()
@@ -341,6 +355,7 @@ const setData = (obj) => {
     LAST_PRICE = dataArray[dataArray.length - 1].bid
     MAX_PRICE = Math.max(...dataArray.map(el => el.bid))
     MIN_PRICE = Math.min(...dataArray.map(el => el.bid))
+    AVG_PRICE = (MAX_PRICE + MIN_PRICE) / 2
 }
 const drawGrid = () => {
     ctx.lineWidth = 1
@@ -389,10 +404,10 @@ const drawCursorLine = () => {
     ctx.stroke()
 }
 const toggleTimer = () => { timer = !timer }
-for (let index = 0; index < 2500; index++) {
-    setData({ bid: rand(10, 20),ask: rand(10, 20) })
+// for (let index = 0; index < 2500; index++) {
+//     setData({ bid: rand(10, 20),ask: rand(10, 20) })
     
-}
+// }
 const step = () => {
     DOM_OFFSET.top = canvas.offsetTop
     DOM_OFFSET.left = canvas.offsetLeft
