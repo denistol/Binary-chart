@@ -14,7 +14,7 @@ let CURSOR_PRICE = 0
 let CLICKED = false
 let CLICKED_POS = {x:0,y:0}
 let DOM_OFFSET = {top: 0, left: 0}
-let SIDE_OFFSET = 160
+let SIDE_OFFSET = H/2
 
 let AVG_PRICE = 0
 let MIN_PRICE = 0
@@ -241,21 +241,19 @@ const drawHighLowLines = () => {
 }
 const setCursorPrice = () => {
 
-    const CUR = cursor.y // revers here ( H- )
-    
-    const cp = ((MAX_PRICE - MIN_PRICE) * CUR / H ) + MIN_PRICE
-    
+    const cur = (H/2) - cursor.y
+    const halfSide = (H/2) - ( (H/2) - (SIDE_OFFSET/2) )
+    const cursorPrice = ( (MAX_PRICE - AVG_PRICE) * cur / halfSide) + AVG_PRICE
+    CURSOR_PRICE = cursorPrice
 
-
-
-    CURSOR_PRICE = cp
 }
 
 const getYPosition = (el) => {
-    const offset = SIDE_OFFSET / 2
+    const of = (H + SIDE_OFFSET)
+    const offset = of / 2
     const CUR = el.bid
     const CUR_OFF = (CUR - MIN_PRICE)
-    const RES =  (H-SIDE_OFFSET) * CUR_OFF / (MAX_PRICE - MIN_PRICE)
+    const RES =  (H-of) * CUR_OFF / (MAX_PRICE - MIN_PRICE)
     return RES + offset
 
 }
@@ -371,7 +369,7 @@ const drawGrid = () => {
     }
 }
 const pushRandom = () => {
-    setData({ bid: rand(10, 20),ask: rand(10, 20) })
+    setData({ bid: rand(10, 160),ask: rand(10, 20) })
 }
 setInterval(() => {
     timer && pushRandom()
