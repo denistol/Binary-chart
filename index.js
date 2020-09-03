@@ -1,4 +1,5 @@
 let timer = true
+
 let W = window.innerWidth
 let H = window.innerHeight - 100
 let FPS = 60
@@ -9,9 +10,19 @@ let DOT_WIDTH = 4
 let TOP_BOTTOM_OFFSET_PX = 120
 let INFO = {}
 let POINT_WIDTH = W / COUNT_PER_PAGE
+let CURSOR_PRICE = 0
+let CLICKED = false
+let CLICKED_POS = {x:0,y:0}
+let DOM_OFFSET = {top: 0, left: 0}
+let SIDE_OFFSET = 160
+
+let MIN_PRICE = 0
+let MAX_PRICE = 0
+let LAST_PRICE = 0
+
 const canvas = document.createElement('canvas')
-const pulse = document.querySelector('.pulse')
 const infoBlock = document.querySelector('.info')
+
 let dataArray = []
 let cursorOnCanvas = false
 canvas.width = W
@@ -49,23 +60,34 @@ const resetParams = () => {
     TOP_BOTTOM_OFFSET_PX = 60
     INFO = {}
     POINT_WIDTH = W / COUNT_PER_PAGE
+    savedCoordinates = []
 }
 canvas.addEventListener('click', (e) => {
     // dataArray = []
     savedCoordinates = []
 
-    savedCoordinates.push({x: e.clientX, y: e.clientY })
+    savedCoordinates.push({x: e.clientX, y: e.clientY, price: CURSOR_PRICE })
+})
+canvas.addEventListener('mousedown', (e) => {
+    CLICKED = true
+    CLICKED_POS = {x: e.clientX, y: e.clientY}
+})
+canvas.addEventListener('mouseup', (e) => {
+    CLICKED = false
+})
+canvas.addEventListener('mouseleave', (e) => {
+    CLICKED = false
 })
 canvas.addEventListener('wheel', (e) => {
     if (e.deltaY > 0) {
         COUNT_PER_PAGE = COUNT_PER_PAGE + 3
-        TOP_BOTTOM_OFFSET_PX += 0.3
+        // TOP_BOTTOM_OFFSET_PX += 0.3
     } else {
         if(COUNT_PER_PAGE <= 6) {
             return
         }
         COUNT_PER_PAGE = COUNT_PER_PAGE - 3
-        TOP_BOTTOM_OFFSET_PX -= 0.3
+        // TOP_BOTTOM_OFFSET_PX -= 0.3
     }
     POINT_WIDTH = W / COUNT_PER_PAGE
 })
@@ -74,13 +96,18 @@ canvas.addEventListener('mouseenter', e => { cursorOnCanvas = true })
 canvas.addEventListener('mouseleave', e => { cursorOnCanvas = false })
 document.addEventListener('mousemove', e => {
     cursor.x = e.clientX
-    cursor.y = e.clientY
-    
+    cursor.y = e.clientY  
 })
 canvas.addEventListener('mousemove', e => {
-    getYPrice()
-    
+    setCursorPrice()
 })
+const changeOffset = s => {
+    if(s) {
+        SIDE_OFFSET +=50
+    } else {
+        SIDE_OFFSET -=50
+    }
+}
 const setInfo = () => {
     
     const highestVal = Math.max(...dataArray.map(el => el.bid))
@@ -94,8 +121,8 @@ const setInfo = () => {
 }
 const drawTextHint = (c, text) => {
     ctx.fillStyle = '#fff'
-    ctx.font = "16px sans-serif";
-    ctx.fillText(`BID: ${text}`, c.x + 5, c.y - 5);
+    ctx.font = "12px sans-serif";
+    ctx.fillText(`BID: ${CURSOR_PRICE}`, c.x + 5, c.y - 5);
 }
 const drawCrossLine = () => {
     if(!cursorOnCanvas) { return }
@@ -107,13 +134,24 @@ const drawCrossLine = () => {
     ctx.moveTo(cursor.x, 0)
     ctx.lineTo(cursor.x, W)
     ctx.stroke()
+    ctx.closePath()
     // draw X
+    // ctx.beginPath()
+    // ctx.moveTo( 0, cursor.y)
+    // ctx.lineTo(W, cursor.y)
+    // ctx.stroke()
+    // ctx.arc(cursor.x,cursor.y, DOT_WIDTH, 0, 2 * Math.PI)
+    // ctx.fill()
     ctx.beginPath()
-    ctx.moveTo( 0, cursor.y)
-    ctx.lineTo(W, cursor.y)
+    ctx.setLineDash([0,0])
+    ctx.strokeStyle = colors.success
+    ctx.lineWidth = 2
+    ctx.moveTo(cursor.x - 15, cursor.y)
+    ctx.lineTo(cursor.x + 15, cursor.y)
+    ctx.moveTo(cursor.x, cursor.y - 15)
+    ctx.lineTo(cursor.x, cursor.y + 15)
     ctx.stroke()
-    ctx.arc(cursor.x,cursor.y, DOT_WIDTH, 0, 2 * Math.PI)
-    ctx.fill()
+    ctx.closePath()
     drawTextHint(cursor, cursor.x)
     
 }
@@ -136,15 +174,18 @@ const drawSavedCoordinates = () => {
         ctx.lineWidth = 1
         ctx.strokeStyle = colors.success
         ctx.beginPath();  
-        // draw X
-        // ctx.moveTo(c.x, 0)
-        // ctx.lineTo(c.x, W)
-        // ctx.stroke()
-        // draw X
+        
+        ctx.moveTo(c.x, 0)
+        ctx.lineTo(c.x, W)
+        ctx.stroke()
+        
         ctx.beginPath()
         ctx.moveTo( 0, c.y)
         ctx.lineTo(W, c.y)
         ctx.stroke()
+        ctx.fillStyle = colors.success
+        ctx.font = "14px sans-serif";
+        ctx.fillText(c.price, c.x, c.y);
     })
 }
 const drawHighLowLines = () => {
@@ -185,29 +226,24 @@ const drawHighLowLines = () => {
     ctx.stroke()
 
 }
-const getYPrice = () => {
-    const currentY = H - cursor.y
-    const items = getVisibleItems()
+const setCursorPrice = () => {
 
-    const maxPrice = Math.max(...items.map(el => el.bid)) || 0
-    const minPrice = Math.min(...items.map(el => el.bid)) || 0
-
-    const minPos = 0
-    const maxPos = H
-
-    const r =(minPrice-maxPrice)/(minPos-maxPos)*(currentY-minPos) + minPrice
-    console.log(r)
-
+    const CUR = cursor.y // revers here ( H- )
     
-}
-const getYPosition = (el) => {
-    const items = getVisibleItems()
+    const cp = ((MAX_PRICE - MIN_PRICE) * CUR / H) + MIN_PRICE
+    
 
-    const current = el.bid
-    const max = Math.max(...items.map(el => el.bid)) || current
-    const min = Math.min(...items.map(el => el.bid)) || current
-    const h = ((TOP_BOTTOM_OFFSET_PX - (H - TOP_BOTTOM_OFFSET_PX))/(min-max)*(current-min) + TOP_BOTTOM_OFFSET_PX)
-    return H - h
+
+
+    CURSOR_PRICE = cp
+}
+
+const getYPosition = (el) => {
+    const offset = SIDE_OFFSET / 2
+    const CUR = el.bid
+    const CUR_OFF = (CUR - MIN_PRICE)
+    const RES =  (H-SIDE_OFFSET) * CUR_OFF / (MAX_PRICE - MIN_PRICE)
+    return RES + offset
 
 }
 const drawDot = (el, i, prev) => {
@@ -228,7 +264,6 @@ const drawDot = (el, i, prev) => {
     ctx.font = "12px sans-serif";
     ctx.fillText(`BID:${el.bid}`, x + 5, y - 5);
 
-    drawPulse(x,y)
 }
 const drawJoinLine = (el, prev) => {
     if(!prev) { return }
@@ -281,6 +316,7 @@ const drawBackground = () => {
 const render = () => {
     ctx.fillStyle = colors.background
     ctx.fillRect(0,0,W,H)
+    
     drawBackground()
     drawCurrentPriceLine()
     drawSavedCoordinates()
@@ -298,11 +334,13 @@ const render = () => {
         drawDot( curr, i, prev )
     }
     drawCrossLine()
-    drawPulse()
+    drawCursorLine()
 }
-const drawPulse = (x,y) => {
-    pulse.style.left = x - 55 + 'px'
-    pulse.style.top = y - 55 + 'px'
+const setData = (obj) => {
+    dataArray.push(obj)
+    LAST_PRICE = dataArray[dataArray.length - 1].bid
+    MAX_PRICE = Math.max(...dataArray.map(el => el.bid))
+    MIN_PRICE = Math.min(...dataArray.map(el => el.bid))
 }
 const drawGrid = () => {
     ctx.lineWidth = 1
@@ -318,23 +356,51 @@ const drawGrid = () => {
     }
 }
 const pushRandom = () => {
-    let item = { bid: rand(4560, 5000),ask: rand(2, 5000) }
-    dataArray.push(item)
+    setData({ bid: rand(10, 20),ask: rand(10, 20) })
 }
 setInterval(() => {
     timer && pushRandom()
 },190)
+const log = () => {
+
+    if(!dataArray.length) { return }
+    const min = Math.min(...dataArray.map(el => el.bid))
+    const max = Math.max(...dataArray.map(el => el.bid))
+    const logContainer = document.querySelector('.info')
+    logContainer.textContent = `
+    CUR_BID: ${dataArray[dataArray.length - 1].bid.toFixed(0)}
+    MAX_BID: ${max.toFixed(0)}
+    MIN_BID: ${min.toFixed(0)}
+    DIFF: ${(max - min).toFixed(0)},
+    CLICKED: ${CLICKED},
+    CLICKED_POS: ${CLICKED_POS.x} - ${CLICKED_POS.y}
+    CURSOR_POS: ${cursor.x} - ${cursor.y}
+    `
+}
+const drawCursorLine = () => {
+    let start = CLICKED_POS
+    let end = cursor
+    ctx.strokeStyle = '#fff'
+    ctx.lineWidth = 2
+    ctx.setLineDash([4,4])
+    ctx.beginPath()
+    ctx.moveTo(start.x, start.y)
+    ctx.lineTo(end.x, end.y)
+    ctx.stroke()
+}
 const toggleTimer = () => { timer = !timer }
-const renderInfo = () => {
-    if(!INFO.highest && !INFO.lowest) {
-        return
-    }
-    infoBlock.textContent = `HI_BID: ${INFO.highest.bid} / LOW_BID:${INFO.lowest.bid} / TOP_BOTTOM_OFFSET_PX :${TOP_BOTTOM_OFFSET_PX}`
+for (let index = 0; index < 2500; index++) {
+    setData({ bid: rand(10, 20),ask: rand(10, 20) })
+    
 }
 const step = () => {
-    setInfo()
-    renderInfo()
+    DOM_OFFSET.top = canvas.offsetTop
+    DOM_OFFSET.left = canvas.offsetLeft
+    // console.log(DOM_OFFSET)
+    log()
     render()
     window.requestAnimationFrame(step)
 }
 window.requestAnimationFrame(step)
+
+

@@ -7,12 +7,15 @@
 </head>
 <body>
     <div class="info">
-        SOMES
+        
     </div>
     <div class="controls">
         <button class="add-random" onclick="toggleTimer()">Toggle timer</button>
         <button class="add-random" onclick="pushRandom()">Add random</button>
         <button class="reset plus" onclick="resetParams()">Reset params</button>
+
+        <button class="add-random" onclick="changeOffset(1)">+</button>
+        <button class="add-random" onclick="changeOffset(0)">-</button>
     </div>
     <svg class="pulse" expanded="true" height="110px" width="110px">
         <circle class="innerCircle" cx="50%" cy="50%" r="22.7901%" fill="#32ac48" stroke="#32acff" stroke-width="5%">
@@ -24,8 +27,9 @@
 </body>
 <style>
     .info{
-        font-size: 16px;
+        font-size: 11px;
         color: #fff;
+        pointer-events: none;
     }
     body{
         font-family: sans-serif;
