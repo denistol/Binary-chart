@@ -5,17 +5,16 @@ let H = window.innerHeight - 100
 let FPS = 60
 let COUNT_PER_PAGE = 30
 let SAFE_HEIGHT_PERCENT = 75
-let DOT_LINE_WIDTH = 4
-let DOT_WIDTH = 4
+let DOT_LINE_WIDTH = 3
+let DOT_WIDTH = 2
 let TOP_BOTTOM_OFFSET_PX = 120
 let INFO = {}
 let POINT_WIDTH = W / COUNT_PER_PAGE
 let CURSOR_PRICE = 0
 let CLICKED = false
 let CLICKED_POS = {x:0,y:0}
-let DOM_OFFSET = {top: 0, left: 0}
 let SIDE_OFFSET = H/2
-
+let HOVERED_COLUMN = null
 let AVG_PRICE = 0
 let MIN_PRICE = 0
 let MAX_PRICE = 0
@@ -29,7 +28,7 @@ let cursorOnCanvas = false
 canvas.width = W
 canvas.height = H
 document.body.prepend(canvas)
-const rand = (min, max) => Math.random() * (max - min) + min
+const rand = (min, max) => Number( (Math.random() * (max - min) + min).toFixed() )
 const cursor = { x: 0,y: 0 }
 const colors = {
     background: '#343b4c',
@@ -46,11 +45,14 @@ let savedCoordinates = []
 
 const getVisibleItems = () => {
     let limit = Math.floor(COUNT_PER_PAGE / 1.5)
+
+    let m = (el, index) => ({...el, index, y: getYPosition(el)})
+
     if(dataArray.length > limit) {
         const items = dataArray.slice(Math.max(dataArray.length - limit, 1))
-        return items.map((el, index) => ({...el, index}))
+        return items.map(m)
     }
-    return dataArray.map((el, index) => ({...el, index}))
+    return dataArray.map(m)
 }
 const resetParams = () => {
     FPS = 60
@@ -168,6 +170,10 @@ const drawCurrentPriceLine = () => {
     ctx.moveTo(0, yPos  )
     ctx.lineTo(W, yPos  )
     ctx.stroke()
+
+    ctx.fillStyle = '#fff'
+    ctx.font = "12px sans-serif";
+    ctx.fillText(`BID:${last.bid}`, W-160 + 5, yPos - 5);
 }
 const drawAvgPriceLine = () => {
     if(!dataArray.length) { return }
@@ -247,7 +253,30 @@ const setCursorPrice = () => {
     CURSOR_PRICE = cursorPrice
 
 }
-
+checkPointIntersections = () => {
+    const items = getVisibleItems()
+    if(!items.length) {
+        return
+    }
+    const pointIndex = Math.floor( (cursor.x + POINT_WIDTH/2) / (POINT_WIDTH))
+    const point = items[pointIndex]
+    if(!point) {
+        return
+    }
+    const isIntersected = ((cursor.y - 10) <= point.y) && ((cursor.y + 10) >= point.y)
+    if( isIntersected ){
+        HOVERED_COLUMN = pointIndex
+    } else {
+        HOVERED_COLUMN = null
+    }
+    
+    // console.log(point)
+    if(point.y === cursor.y) {
+        console.log('EEEE')
+    }
+    // const dotX = 
+    // console.log(  )
+}
 const getYPosition = (el) => {
     const of = (H + SIDE_OFFSET)
     const offset = of / 2
@@ -259,21 +288,29 @@ const getYPosition = (el) => {
 }
 const drawDot = (el, i, prev) => {
     // COLORS
-    if((el && prev) && el.bid > prev.bid) {
+    const isHovered = el.index === HOVERED_COLUMN
+    if(isHovered) {
+        ctx.fillStyle = '#fff'
+    }
+    else if((el && prev) && el.bid > prev.bid) {
         ctx.fillStyle = colors.success
     } else {
         ctx.fillStyle = colors.danger
     }
+    const dotWidth = isHovered ? DOT_WIDTH*2 : DOT_WIDTH
     const x = POINT_WIDTH * el.index
-    const y = getYPosition(el)
+    const y = el.y
     
     ctx.beginPath()
-    ctx.arc(x,y, DOT_WIDTH, 0, 2 * Math.PI)
+    ctx.arc(x,y, dotWidth, 0, 2 * Math.PI)
     ctx.fill()
 
     ctx.fillStyle = colors.secondary
     ctx.font = "12px sans-serif";
     ctx.fillText(`BID:${el.bid}`, x + 5, y - 5);
+
+    // TEST
+    // drawCandle(el)
 
 }
 const drawJoinLine = (el, prev) => {
@@ -296,6 +333,12 @@ const drawJoinLine = (el, prev) => {
     ctx.lineTo(prevX, prevY)
     ctx.stroke()
 
+}
+const checkPrice = () => {
+    if(savedCoordinates[0] && savedCoordinates[0].price <= LAST_PRICE) {
+        console.log('trigger')
+        savedCoordinates = []
+    }
 }
 const drawBackground = () => {
     const items = getVisibleItems()
@@ -327,7 +370,7 @@ const drawBackground = () => {
 const render = () => {
     ctx.fillStyle = colors.background
     ctx.fillRect(0,0,W,H)
-    
+    checkPrice()
     drawBackground()
     drawCurrentPriceLine()
     drawAvgPriceLine()
@@ -347,6 +390,31 @@ const render = () => {
     }
     drawCrossLine()
     drawCursorLine()
+    if(HOVERED_COLUMN && cursorOnCanvas) {
+        document.body.style.cursor = 'pointer'
+    } else {
+        document.body.style.cursor = 'default'
+    }
+}
+const drawCandle = (el) => {
+    ctx.fillStyle = '#fff'
+    const halfHeight = 30
+    const lineHeight = 100
+    const width = 6
+    const x = (POINT_WIDTH * el.index) - width/2
+    // draw line
+
+    ctx.fillRect(x+2, (el.y - lineHeight/2), 1, lineHeight)
+
+    // draw top
+    ctx.fillStyle = 'red'
+    let ay = (el.y) - halfHeight
+    ctx.fillRect(x,ay, width,halfHeight)
+    
+    // draw bot
+    ctx.fillStyle = 'red'
+    const by = (el.y)
+    ctx.fillRect(x,by, width,halfHeight)
 }
 const setData = (obj) => {
     dataArray.push(obj)
@@ -373,7 +441,7 @@ const pushRandom = () => {
 }
 setInterval(() => {
     timer && pushRandom()
-},190)
+},1000)
 const log = () => {
 
     if(!dataArray.length) { return }
@@ -407,9 +475,7 @@ const toggleTimer = () => { timer = !timer }
     
 // }
 const step = () => {
-    DOM_OFFSET.top = canvas.offsetTop
-    DOM_OFFSET.left = canvas.offsetLeft
-    // console.log(DOM_OFFSET)
+    checkPointIntersections()
     log()
     render()
     window.requestAnimationFrame(step)
