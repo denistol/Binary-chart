@@ -1,4 +1,3 @@
-let timer = true
 
 const testData = [
     { time: '2018-10-19', close: 54.62, ask: 54.62, high: 55.50, low: 54.52, bid: 54.90, open: 54.90 },
@@ -155,8 +154,11 @@ const testData = [
 
 class Chart {
     constructor(parentNode) {
-        this.W = window.innerWidth
-        this.H = 768
+        this.parentNode = parentNode
+        this.canvas = document.createElement('canvas')
+        this.ctx = this.canvas.getContext('2d')
+        this.ctx.translate(0.5, 0.5);
+        this.setSize()        
         this.COUNT_PER_PAGE = 120
         this.DOT_LINE_WIDTH = 2
         this.DOT_WIDTH = 3
@@ -172,6 +174,8 @@ class Chart {
         this.CURSOR_ON_CANVAS = false
         this.DATA_ARRAY = []
         this.SAVED_COORDINATES = []
+        this.BINARY_POINTS = []
+        this.FRAME_SECONDS = 16
         this.CURSOR = { x: 0,y: 0 }
         this.COLORS = {
             background: `rgba(25, 31, 45, 0.7)`,
@@ -180,16 +184,15 @@ class Chart {
             secondary: '#434957',
             chartGradient: this.hexToRgba('#434957', 1)
         }
-        this.canvas = document.createElement('canvas')
-        this.ctx = this.canvas.getContext('2d')
-        this.ctx.translate(0.5, 0.5);
-        this.canvas.width = this.W
-        this.canvas.height = this.H
-
         parentNode.appendChild(this.canvas)
-
         this.initListeners()
         this.init()
+    }
+    setSize() {
+        this.W = this.parentNode.clientWidth || 600
+        this.H = this.parentNode.clientHeight || 400
+        this.canvas.width = this.W
+        this.canvas.height = this.H
     }
     hexToRgba(hex, opacity) {
         var opacity = isNaN(opacity) ? 100 : opacity;
@@ -220,10 +223,17 @@ class Chart {
         }
         return this.DATA_ARRAY.map(m)
     }
+    addBinaryPoint(seconds) {
+        const last = [...this.DATA_ARRAY].pop()
+        const created = new Date()
+        const type = 'UP'
+        this.BINARY_POINTS.push({ price: last.bid, created, index: this.DATA_ARRAY.length, type, seconds })
+    }
     initListeners() {
         this.canvas.addEventListener('click', (e) => {
             this.SAVED_COORDINATES = []
             this.SAVED_COORDINATES.push({x: this.CURSOR.x, y: this.CURSOR.y, price: this.CURSOR_PRICE })
+            this.addBinaryPoint(this.FRAME_SECONDS)
         })
         this.canvas.addEventListener('mousedown', (e) => {
             this.CLICKED = true
@@ -270,10 +280,7 @@ class Chart {
     
         })
         window.onresize = () => {
-            this.W = window.innerWidth
-            this.H = window.innerHeight - 100
-            this.canvas.width = this.W
-            this.canvas.height = this.H
+            this.setSize()
         }
         this.canvas.addEventListener('mousemove', e => {
             this.setCursorPrice()
@@ -318,7 +325,7 @@ class Chart {
         this.ctx.fillStyle = '#fff'
         this.ctx.font = "12px sans-serif";
         const p = this.CURSOR_PRICE.toFixed(2)
-        this.ctx.fillText(`BID: ${p}`, c.x + 5, (c.y - 5) );
+        this.ctx.fillText(p, c.x + 5, (c.y - 5) );
     }
     drawCrossLine () {
         if(!this.CURSOR_ON_CANVAS) { return }
@@ -618,6 +625,56 @@ class Chart {
         }
 
     }
+    removeBinaryOption(index) {
+        this.BINARY_POINTS = this.BINARY_POINTS.filter(el => el.index !== index)
+    }
+    drawBinaryOptions() {
+        this.BINARY_POINTS.forEach((item, index) => {
+            const visibleItems = this.getVisibleItems().length
+            const totalItems = this.DATA_ARRAY.length
+            const offsetItems = totalItems - visibleItems
+            console.log({visibleItems, totalItems, index: item.index, offsetItems})
+            const x = ((item.index - 1 - offsetItems + item.seconds) * this.POINT_WIDTH)
+            const expMs = new Date() - (Number(item.created) + item.seconds * 1000)
+            const expSecs = expMs / 1000
+            
+            if(expSecs >= 0) {
+                this.removeBinaryOption(item.index)
+                return
+            }
+    
+            // draw Line
+            const color = this.type === 'DOWN' ? this.COLORS.danger : this.COLORS.success
+            this.ctx.setLineDash([0,0])
+            this.ctx.strokeStyle = color
+            this.ctx.lineWidth = 1
+            this.ctx.beginPath()
+            this.ctx.moveTo(x, 0)
+            this.ctx.lineTo(x, this.H)
+            this.ctx.stroke()
+
+            this.ctx.fillStyle = color
+            this.ctx.font = "bold 16px sans-serif";
+            this.ctx.fillText(Math.abs(expSecs.toFixed(2)), x + 10, this.H/2 );
+        })
+
+        
+    }
+    drawBinaryOptionPreview() {
+        const visibleItems = this.getVisibleItems().length
+        const totalItems = this.DATA_ARRAY.length
+        const offsetItems = totalItems - visibleItems
+        const x = ((this.DATA_ARRAY.length - 1 - offsetItems + this.FRAME_SECONDS) * this.POINT_WIDTH)
+
+        const color = `rgba(255,255,255,.5)`
+        this.ctx.setLineDash([5,10])
+        this.ctx.strokeStyle = color
+        this.ctx.lineWidth = 1
+        this.ctx.beginPath()
+        this.ctx.moveTo(x, 0)
+        this.ctx.lineTo(x, this.H)
+        this.ctx.stroke()
+    }
     drawCursorLine() {
         // let start = CLICKED_POS
         // let end = cursor
@@ -642,9 +699,10 @@ class Chart {
         this.drawGrid()
         
         // drawAvgPriceLine()
-        this.drawSavedCoordinates()
+        // this.drawSavedCoordinates()
         this.drawHighLowLines()
         const items = this.getVisibleItems()
+        
         if(this.CHART_TYPE === 'line') {
             for(let i =0; i < items.length; i++) {
                 const curr = items[i]
@@ -668,6 +726,9 @@ class Chart {
         this.drawCrossLine()
         this.drawCursorLine()
         this.drawCurrentPriceLine()
+        this.drawBinaryOptions()
+        this.drawBinaryOptionPreview()
+
         if(this.HOVERED_COLUMN && this.CURSOR_ON_CANVAS) {
             document.body.style.cursor = 'pointer'
         } else {
